@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: trade-lab
+  datasource:
+    url: jdbc:mysql://localhost:3306/trade_lab?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: trade
+    password: trade123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: trade
+    password: trade123
+
+server:
+  port: 8080
+
+trade:
+  order:
+    pay-timeout-minutes: 15
+  outbox:
+    poll-interval-ms: 3000
+    batch-size: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.tradelab: INFO
+    org.hibernate.SQL: WARN
