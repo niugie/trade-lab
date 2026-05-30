@@ -33,4 +33,11 @@ public interface InventoryLedgerRepository extends JpaRepository<InventoryLedger
             WHERE l.skuId = :skuId AND l.reserved >= :qty
             """)
     int release(@Param("skuId") Long skuId, @Param("qty") int qty);
+
+    @Modifying
+    @Query("""
+            UPDATE InventoryLedger l SET l.available = :available, l.reserved = :reserved
+            WHERE l.skuId = :skuId
+            """)
+    void resetForDemo(@Param("skuId") Long skuId, @Param("available") int available, @Param("reserved") int reserved);
 }

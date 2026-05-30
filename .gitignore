@@ -6,3 +6,5 @@ target/
 *.log
 .env
 .DS_Store
+**/repository/
+D?apache-maven*/

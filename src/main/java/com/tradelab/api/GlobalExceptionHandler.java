@@ -4,6 +4,7 @@ import com.tradelab.common.ApiResponse;
 import com.tradelab.common.BusinessException;
 import com.tradelab.common.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -14,13 +15,20 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.stream.Collectors;
 
 @Slf4j
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.tradelab.api")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Void> handleBusiness(BusinessException ex) {
         return ApiResponse.fail(ex.getErrorCode(), ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<Void> handleDuplicate(DataIntegrityViolationException ex) {
+        log.warn("Duplicate request: {}", ex.getMessage());
+        return ApiResponse.fail(ErrorCode.DUPLICATE_REQUEST, "Duplicate request");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -21,7 +21,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-@Profile("!test")
+@Profile("!test & !local")
 @RequiredArgsConstructor
 public class OutboxPublisher {
 

@@ -33,6 +33,13 @@ public interface UserCouponRepository extends JpaRepository<UserCoupon, Long> {
             """)
     int release(@Param("couponId") Long couponId, @Param("orderId") Long orderId);
 
+    @Modifying
+    @Query("""
+            UPDATE UserCoupon c SET c.status = 'AVAILABLE', c.frozenOrderId = NULL, c.usedAt = NULL
+            WHERE c.id = :couponId AND c.userId = :userId
+            """)
+    int resetForDemo(@Param("couponId") Long couponId, @Param("userId") Long userId);
+
     Optional<UserCoupon> findByIdAndUserId(Long id, Long userId);
 
     boolean existsByIdAndUserIdAndStatus(Long id, Long userId, UserCouponStatus status);

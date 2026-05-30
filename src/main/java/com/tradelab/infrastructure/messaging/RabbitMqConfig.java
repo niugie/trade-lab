@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 @Configuration
-@Profile("!test")
+@Profile("!test & !local")
 public class RabbitMqConfig {
 
     public static final String EXCHANGE_ORDER = "trade.order.exchange";

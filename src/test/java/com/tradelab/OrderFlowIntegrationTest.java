@@ -3,6 +3,7 @@ package com.tradelab;
 import com.tradelab.domain.order.OrderStatus;
 import com.tradelab.infrastructure.persistence.InventoryLedgerRepository;
 import com.tradelab.infrastructure.persistence.TradeOrderRepository;
+import com.tradelab.infrastructure.persistence.UserCouponRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,6 +32,9 @@ class OrderFlowIntegrationTest {
     @Autowired
     private InventoryLedgerRepository inventoryLedgerRepository;
 
+    @Autowired
+    private UserCouponRepository userCouponRepository;
+
     @Test
     void createPayAndCloseFlow() throws Exception {
         var before = inventoryLedgerRepository.findById(1L).orElseThrow();
@@ -53,7 +57,8 @@ class OrderFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.status").value("PENDING_PAY"))
                 .andReturn().getResponse().getContentAsString();
 
-        long orderId = com.jayway.jsonpath.JsonPath.read(createResp, "$.data.orderId");
+        String orderIdStr = com.jayway.jsonpath.JsonPath.read(createResp, "$.data.orderId").toString();
+        long orderId = Long.parseLong(orderIdStr);
 
         var reserved = inventoryLedgerRepository.findById(1L).orElseThrow();
         assertThat(reserved.getAvailable()).isEqualTo(before.getAvailable() - 2);
@@ -96,9 +101,54 @@ class OrderFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        long id1 = com.jayway.jsonpath.JsonPath.read(r1, "$.data.orderId");
-        long id2 = com.jayway.jsonpath.JsonPath.read(r2, "$.data.orderId");
+        long id1 = Long.parseLong(com.jayway.jsonpath.JsonPath.read(r1, "$.data.orderId").toString());
+        long id2 = Long.parseLong(com.jayway.jsonpath.JsonPath.read(r2, "$.data.orderId").toString());
         assertThat(id1).isEqualTo(id2);
+    }
+
+    @Test
+    void closeOrderReleasesInventoryAndCoupon() throws Exception {
+        mockMvc.perform(post("/api/v1/demo/reset")).andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"userId":10001,"skuId":1,"quantity":1,"userCouponId":1,"idempotencyKey":"close-test-1"}
+                                """))
+                .andExpect(status().isOk());
+
+        var afterCreate = inventoryLedgerRepository.findById(1L).orElseThrow();
+        assertThat(afterCreate.getReserved()).isGreaterThan(0);
+
+        String listResp = mockMvc.perform(get("/api/v1/orders?userId=10001&limit=5"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String orderIdStr = com.jayway.jsonpath.JsonPath.read(listResp, "$.data[0].orderId").toString();
+
+        mockMvc.perform(post("/api/v1/orders/" + orderIdStr + "/close"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CLOSED"));
+
+        var coupon = userCouponRepository.findById(1L).orElseThrow();
+        assertThat(coupon.getStatus().name()).isEqualTo("AVAILABLE");
+    }
+
+    @Test
+    void demoResetRestoresSeedState() throws Exception {
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"userId":10001,"skuId":1,"quantity":3,"userCouponId":1,"idempotencyKey":"reset-test-1"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/demo/reset"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.inventory.available").value(1000))
+                .andExpect(jsonPath("$.data.inventory.reserved").value(0))
+                .andExpect(jsonPath("$.data.coupon.status").value("AVAILABLE"))
+                .andExpect(jsonPath("$.data.pendingOrderCount").value(0));
     }
 
     @Test
@@ -107,5 +157,13 @@ class OrderFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.skuId").value(1));
+    }
+
+    @Test
+    void getDemoState() throws Exception {
+        mockMvc.perform(get("/api/v1/demo/state?userId=10001&couponId=1&skuId=1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.inventory.skuId").value(1))
+                .andExpect(jsonPath("$.data.coupon.couponId").value(1));
     }
 }

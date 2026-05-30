@@ -2,6 +2,8 @@ package com.tradelab.domain.order;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -39,6 +41,7 @@ public class TradeOrder {
     private Long payAmount;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 24)
     private OrderStatus status;
 

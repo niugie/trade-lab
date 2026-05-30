@@ -2,6 +2,8 @@ package com.tradelab.domain.coupon;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -25,6 +27,7 @@ public class UserCoupon {
     private Long templateId;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 16)
     private UserCouponStatus status;
 

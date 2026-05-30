@@ -15,6 +15,15 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
 
     Optional<TradeOrder> findByPayNo(String payNo);
 
+    List<TradeOrder> findByUserIdAndStatus(Long userId, OrderStatus status);
+
+    List<TradeOrder> findByUserIdOrderByCreatedAtDesc(Long userId, org.springframework.data.domain.Pageable pageable);
+
+    List<TradeOrder> findByUserIdAndStatusOrderByCreatedAtDesc(
+            Long userId, OrderStatus status, org.springframework.data.domain.Pageable pageable);
+
+    long countByUserIdAndStatus(Long userId, OrderStatus status);
+
     @Query("""
             SELECT o FROM TradeOrder o
             WHERE o.status = :status AND o.expireAt <= :now

@@ -2,7 +2,7 @@ spring:
   application:
     name: trade-lab
   datasource:
-    url: jdbc:mysql://localhost:3306/trade_lab?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3307/trade_lab?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: trade
     password: trade123
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -13,6 +13,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        type:
+          preferred_enum_jdbc_type: STRING
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -50,6 +52,11 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true
+    doc-expansion: list
+    customJs: /js/swagger-ui-custom.js
 
 logging:
   level:

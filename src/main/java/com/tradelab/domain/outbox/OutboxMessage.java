@@ -2,6 +2,8 @@ package com.tradelab.domain.outbox;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 @Entity
@@ -30,6 +32,7 @@ public class OutboxMessage {
     private String payload;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 16)
     private OutboxStatus status;
 

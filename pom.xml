@@ -77,7 +77,7 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 
@@ -97,4 +97,14 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- WSL: compile into native Linux FS, then copy JAR back to project/target -->
+    <profiles>
+        <profile>
+            <id>wsl</id>
+            <build>
+                <directory>${user.home}/.cache/trade-lab-build/target</directory>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -15,7 +15,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-@Profile("!test")
+@Profile("!test & !local")
 @RequiredArgsConstructor
 public class OrderExpireScheduler {
 

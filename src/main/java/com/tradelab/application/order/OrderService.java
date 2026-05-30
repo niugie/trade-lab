@@ -16,6 +16,7 @@ import com.tradelab.infrastructure.persistence.SkuRepository;
 import com.tradelab.infrastructure.persistence.TradeOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +43,14 @@ public class OrderService {
     @Transactional
     public TradeOrder createOrder(Long userId, Long skuId, int quantity, Long userCouponId, String idempotencyKey) {
         return tradeOrderRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey)
-                .orElseGet(() -> doCreateOrder(userId, skuId, quantity, userCouponId, idempotencyKey));
+                .orElseGet(() -> {
+                    try {
+                        return doCreateOrder(userId, skuId, quantity, userCouponId, idempotencyKey);
+                    } catch (DataIntegrityViolationException ex) {
+                        return tradeOrderRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey)
+                                .orElseThrow(() -> ex);
+                    }
+                });
     }
 
     private TradeOrder doCreateOrder(Long userId, Long skuId, int quantity, Long userCouponId, String idempotencyKey) {
@@ -137,7 +145,7 @@ public class OrderService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Order not found"));
 
         if (!order.getStatus().canClose()) {
-            return order;
+            throw new BusinessException(ErrorCode.INVALID_ORDER_STATE, "Order cannot be closed");
         }
 
         inventoryService.release(order.getSkuId(), order.getQuantity());

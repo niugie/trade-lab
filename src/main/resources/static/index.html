@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trade Lab</title>
+  <link rel="stylesheet" href="/css/demo.css">
+</head>
+<body>
+  <div class="layout">
+    <header>
+      <div class="brand">
+        <h1>Trade Lab</h1>
+        <p>订单 · 库存 · 优惠券 · 幂等 · Outbox</p>
+      </div>
+      <div class="header-links">
+        <a href="/swagger-ui/index.html">API 文档 (Swagger)</a>
+        <a href="/actuator/health" target="_blank">健康检查</a>
+      </div>
+    </header>
+
+    <div class="topics">
+      <span class="topic">PENDING_PAY → PAID / CLOSED</span>
+      <span class="topic">available / reserved 库存账本</span>
+      <span class="topic">优惠券 AVAILABLE → FROZEN → USED</span>
+      <span class="topic">Snowflake 订单号（字符串传输）</span>
+      <span class="topic">Outbox → RabbitMQ</span>
+    </div>
+
+    <div class="flow">
+      <div class="flow-step active" data-step="0">① 创建订单</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" data-step="1">② 待支付 · 库存预占</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" data-step="2">③ 支付 / 关单</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" data-step="3">④ 完成</div>
+    </div>
+
+    <div class="grid grid-3">
+      <section class="card">
+        <h2>参数 <span class="badge" id="form-mode-badge">新建订单</span></h2>
+        <div class="form-row" id="row-order-id" hidden>
+          <label for="orderIdDisplay">订单号</label>
+          <input id="orderIdDisplay" type="text" readonly class="readonly">
+        </div>
+        <div class="form-row">
+          <label for="userId">用户 ID</label>
+          <input id="userId" type="number" value="10001">
+        </div>
+        <div class="form-row">
+          <label for="skuId">商品 SKU</label>
+          <input id="skuId" type="number" value="1">
+        </div>
+        <div class="form-row">
+          <label for="quantity">数量</label>
+          <input id="quantity" type="number" value="1" min="1">
+        </div>
+        <div class="form-row">
+          <label for="useCoupon">使用优惠券</label>
+          <input id="useCoupon" type="checkbox" checked style="width:auto">
+        </div>
+        <div class="form-row">
+          <label for="userCouponId">券 ID</label>
+          <input id="userCouponId" type="number" value="1">
+        </div>
+        <div class="form-row">
+          <label for="idempotencyKey">幂等键</label>
+          <input id="idempotencyKey" type="text" placeholder="自动生成">
+        </div>
+        <p class="hint" id="form-hint">填写参数后创建新订单 · SKU 1 = ¥99 · 券 1 = 满 ¥50 减 ¥10</p>
+        <div class="actions">
+          <button id="btn-create" class="btn btn-primary">1. 创建订单</button>
+          <button id="btn-new" class="btn btn-ghost" hidden>新建下一单</button>
+          <button id="btn-pay" class="btn btn-success" disabled>2. 模拟支付</button>
+          <button id="btn-close" class="btn btn-danger" disabled>关单释放</button>
+          <button id="btn-refresh" class="btn btn-ghost">刷新状态</button>
+          <button id="btn-reset" class="btn btn-ghost">重置数据</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>当前订单</h2>
+        <div id="order-panel">
+          <div class="empty-state">尚未创建订单<br>点击「创建订单」开始</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>优惠券 <span class="badge" id="coupon-badge">—</span></h2>
+        <div id="coupon-panel">
+          <div class="empty-state">加载中…</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>库存账本 <span class="badge">SKU #1</span></h2>
+        <div id="inventory-panel">
+          <div class="empty-state">加载中…</div>
+        </div>
+      </section>
+
+      <section class="card span-2" id="pending-section">
+        <h2>待支付订单 <span class="badge" id="pending-badge">—</span></h2>
+        <p class="hint section-hint">有多笔未支付订单时，点「切换」回到该订单的支付界面</p>
+        <div id="pending-panel">
+          <div class="empty-state">暂无待支付订单</div>
+        </div>
+      </section>
+
+      <section class="card span-2">
+        <h2>全部订单记录</h2>
+        <div id="history-panel">
+          <div class="empty-state">暂无订单记录</div>
+        </div>
+      </section>
+
+      <section class="card log-card span-3">
+        <h2>操作日志</h2>
+        <div id="log-panel" class="log-panel"></div>
+      </section>
+    </div>
+  </div>
+  <script src="/js/demo.js"></script>
+</body>
+</html>

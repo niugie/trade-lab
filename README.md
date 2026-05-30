@@ -1,23 +1,23 @@
 # trade-lab
 
-[![CI](https://github.com/YOUR_USERNAME/trade-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/trade-lab/actions/workflows/ci.yml)
+[![CI](https://github.com/NiuSir/trade-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/NiuSir/trade-lab/actions/workflows/ci.yml)
 
-**Transaction domain lab** for backend portfolio — order state machine, inventory reserve/confirm/release, coupon freeze, and Outbox + RabbitMQ.
+Spring Boot 3 交易域示例：订单状态机、库存预占/确认/释放、优惠券冻结、幂等与 Outbox + RabbitMQ。
 
 > Java 17 · Spring Boot 3 · MySQL · Redis · RabbitMQ · Flyway
 
-## Highlights (for interviews)
+## 功能
 
-| Topic | Implementation |
-|-------|----------------|
-| Order state machine | `PENDING_PAY` → `PAID` / `CLOSED` |
-| Inventory | `available` / `reserved` ledger, optimistic SQL updates |
-| Coupon | `AVAILABLE` → `FROZEN` → `USED`, release on close |
-| Idempotency | `(user_id, idempotency_key)` unique; pay_no unique |
-| Reliable messaging | Transactional **Outbox** → RabbitMQ |
-| Timeout close | Scheduler scans expired `PENDING_PAY` orders |
+| 模块 | 说明 |
+|------|------|
+| 订单 | `PENDING_PAY` → `PAID` / `CLOSED` |
+| 库存 | `available` / `reserved` 账本，乐观锁 SQL 更新 |
+| 优惠券 | `AVAILABLE` → `FROZEN` → `USED`，关单释放 |
+| 幂等 | `(user_id, idempotency_key)` 唯一；`pay_no` 唯一 |
+| 消息 | 事务 Outbox → RabbitMQ |
+| 超时关单 | 定时扫描过期 `PENDING_PAY` 订单 |
 
-## Architecture
+## 架构
 
 ```
 Client → OrderController → OrderService
@@ -29,41 +29,50 @@ OutboxPublisher (scheduled) → RabbitMQ → OrderCloseConsumer (idempotent)
 OrderExpireScheduler → closeOrder → release inventory & coupon
 ```
 
-## Quick start
+## 快速开始
 
-### 1. Start infrastructure
+### 本地模式（无需 Docker）
+
+需要 JDK 17+，使用 H2 内存库（与 MySQL 相同的种子数据）。
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+### 完整环境（WSL + Docker）
 
 ```bash
 docker compose up -d
+./scripts/build-wsl.sh
+./scripts/run-wsl-jar.sh
 ```
 
-Services: MySQL `3306`, Redis `6379`, RabbitMQ `5672` (UI `15672`, user `trade` / `trade123`).
+项目在 `/mnt/d` 上时，请用 `./scripts/build-wsl.sh` 编译，避免 Windows 文件锁导致 `mvn package` 失败。
 
-### 2. Run application
-
-Requires **JDK 17+** (`java -version`).
+Windows + Docker Desktop：
 
 ```bash
+docker compose up -d
 mvn spring-boot:run
 ```
 
-- API: http://localhost:8080
-- Swagger UI: http://localhost:8080/swagger-ui.html
+服务端口：MySQL `3307`，Redis `6379`，RabbitMQ `5672`（管理界面 `15672`，账号 `trade` / `trade123`）。
 
-### 3. Demo flow
+- 控制台：http://localhost:8080/
+- Swagger：http://localhost:8080/swagger-ui/index.html
+- 健康检查：http://localhost:8080/actuator/health
+
+### 接口示例
 
 ```bash
-# Create order (demo user 10001 has coupon id=1)
 curl -X POST http://localhost:8080/api/v1/orders \
   -H "Content-Type: application/json" \
   -d '{"userId":10001,"skuId":1,"quantity":1,"userCouponId":1,"idempotencyKey":"demo-001"}'
 
-# Pay (replace ORDER_ID)
 curl -X POST http://localhost:8080/api/v1/orders/ORDER_ID/pay \
   -H "Content-Type: application/json" \
   -d '{"payNo":"PAY-001"}'
 
-# Check inventory
 curl http://localhost:8080/api/v1/inventory/1
 ```
 
@@ -71,48 +80,39 @@ curl http://localhost:8080/api/v1/inventory/1
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/v1/orders` | Create order (reserve stock, optional coupon freeze) |
-| GET | `/api/v1/orders/{id}` | Query order |
-| POST | `/api/v1/orders/{id}/pay` | Pay (confirm stock, confirm coupon) |
-| POST | `/api/v1/orders/{id}/close` | Close & release resources |
-| GET | `/api/v1/inventory/{skuId}` | Query inventory ledger |
+| POST | `/api/v1/orders` | 创建订单 |
+| GET | `/api/v1/orders/{id}` | 查询订单 |
+| POST | `/api/v1/orders/{id}/pay` | 支付 |
+| POST | `/api/v1/orders/{id}/close` | 关单 |
+| GET | `/api/v1/inventory/{skuId}` | 查询库存 |
+| GET | `/api/v1/demo/state` | 聚合状态 |
+| POST | `/api/v1/demo/reset` | 重置测试数据 |
 
-## Project structure
+## 项目结构
 
 ```
 src/main/java/com/tradelab/
-├── api/              # REST + DTO + exception handler
-├── application/      # Use cases (order, inventory, coupon, outbox)
-├── domain/           # Entities & enums
-├── infrastructure/   # JPA, RabbitMQ, schedulers
-└── common/           # Error codes, Snowflake ID
+├── api/              # REST、DTO、异常处理
+├── application/      # 业务逻辑
+├── domain/           # 实体与枚举
+├── infrastructure/   # JPA、RabbitMQ、定时任务
+└── common/           # 错误码、Snowflake ID
 ```
 
-## Consistency notes
+## 一致性
 
-1. **Create order**: single transaction — reserve inventory, freeze coupon, insert order, append outbox.
-2. **Pay**: confirm reserved stock (deduct `reserved`); coupon `FROZEN` → `USED`.
-3. **Close / expire**: release `reserved` back to `available`; coupon back to `AVAILABLE`.
-4. **Outbox**: at-least-once publish; consumer uses `message_consume_log` for idempotency.
+1. **下单**：同一事务内预占库存、冻结优惠券、写订单、写 Outbox。
+2. **支付**：确认预占库存；优惠券 `FROZEN` → `USED`。
+3. **关单/超时**：释放 `reserved` 回 `available`；优惠券恢复 `AVAILABLE`。
+4. **Outbox**：至少一次投递；消费者通过 `message_consume_log` 幂等。
 
-## Tests
+## 测试
 
 ```bash
 mvn test
 ```
 
-Uses H2 in-memory (RabbitMQ auto-config disabled).
-
-## Push to GitHub
-
-```bash
-# On GitHub: New repository → name: trade-lab → Public → do NOT add README
-git remote add origin https://github.com/YOUR_USERNAME/trade-lab.git
-git branch -M main
-git push -u origin main
-```
-
-Replace `YOUR_USERNAME` and update the CI badge URL in this README.
+测试使用 H2 内存库，RabbitMQ 自动配置已禁用。
 
 ## License
 
