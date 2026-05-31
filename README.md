@@ -1,6 +1,6 @@
 # trade-lab
 
-[![CI](https://github.com/NiuSir/trade-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/NiuSir/trade-lab/actions/workflows/ci.yml)
+[![CI](https://github.com/niugie/trade-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/niugie/trade-lab/actions/workflows/ci.yml)
 
 Spring Boot 3 交易域示例：订单状态机、库存预占/确认/释放、优惠券冻结、幂等与 Outbox + RabbitMQ。
 
